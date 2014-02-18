@@ -104,6 +104,7 @@ public class PacketCollector {
     	return resultQueue.poll();
     }
 
+    // TODO note that usually nextResultOrThrow should be used instead of this method
     /**
      * Returns the next available packet. The method call will block (not return)
      * until a packet is available.
@@ -119,12 +120,12 @@ public class PacketCollector {
 		}
     }
 
+    // TODO note that usually nextResultOrThrow should be used instead of this method
     /**
      * Returns the next available packet. The method call will block (not return)
-     * until a packet is available or the <tt>timeout</tt> has elapased. If the
+     * until a packet is available or the <tt>timeout</tt> has elapsed. If the
      * timeout elapses without a result, <tt>null</tt> will be returned.
      *
-     * @param timeout the amount of time to wait for the next packet (in milleseconds).
      * @return the next available packet.
      */
     public Packet nextResult(long timeout) {
@@ -136,6 +137,37 @@ public class PacketCollector {
 		}
     }
 
+    /**
+     * Returns the next available packet. The method call will block until a packet is available or
+     * the connections reply timeout has elapsed. If the timeout elapses without a result,
+     * <tt>null</tt> will be returned. This method does also cancel the PacketCollector.
+     * 
+     * @return the next available packet.
+     * @throws XMPPException
+     */
+    public Packet nextResultOrThrow() throws XMPPException {
+        return nextResultOrThrow(connection.getPacketReplyTimeout());
+    }
+
+    /**
+     * Returns the next available packet. The method call will block until a packet is available or
+     * the <tt>timeout</tt> has elapsed. This method does also cancel the PacketCollector.
+     * 
+     * @param timeout the amount of time to wait for the next packet (in milleseconds).
+     * @return the next available packet.
+     * @throws XMPPException in case of no response or error response
+     */
+    public Packet nextResultOrThrow(long timeout) throws XMPPException {
+        Packet result = nextResult(timeout);
+        cancel();
+        if (result == null) {
+            throw new XMPPException(SmackError.NO_RESPONSE_FROM_SERVER);
+        } else if (result.getError() != null) {
+            throw new XMPPException(result.getError());
+        }
+        return result;
+    }
+    
     /**
      * Processes a packet to see if it meets the criteria for this packet collector.
      * If so, the packet is added to the result queue.
